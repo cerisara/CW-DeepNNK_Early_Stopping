@@ -9,7 +9,7 @@ date >> logg
 exit
 python main.py --mode test --stopping unsuprisk --validation_percent 0 --criterion_freq 1 --patience 20 --knn_param 25 --interpol_queries 1.0
 
-python main.py --stopping unsuprisk --validation_percent 0 --criterion_freq 1 --patience 20 --knn_param 25 --interpol_queries 1.0
+python main.py --mode test --stopping unsuprisk --validation_percent 0 --criterion_freq 1 --patience 20 --knn_param 25 --interpol_queries 1.0
 exit
 
 python main.py --stopping unsuprisk --validation_percent 0.2 --criterion_freq 1 --patience 20 --knn_param 25 --interpol_queries 1.0
