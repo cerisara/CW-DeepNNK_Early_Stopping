@@ -15,7 +15,9 @@ format D 10 4 0
 format E 10 0 0
 leftstring A0 = "avg:"
 let B0 = @avg(B3:B21)
+let C0 = @avg(C3:C21)
 let D0 = @avg(D3:D21)
+let E0 = @avg(E3:E21)
 leftstring A1 = "std:"
 let B1 = @stddev(B3:B20)
 let D1 = @stddev(D3:D20)
@@ -43,5 +45,49 @@ let B7 = 0.828
 let C7 = 99
 let D7 = 0.8375
 let E7 = 110
-goto E7
-mark a "Sheet1" B1
+leftstring A10 = "NNK dev"
+leftstring B10 = "NNK"
+leftstring C10 = "time uns"
+leftstring D10 = "time dev"
+let A11 = 84.6
+let B11 = 0.856
+let C11 = 22-4+12*60
+let D11 = 24-30+6*60
+let A12 = 84.4
+let B12 = 0.85
+let C12 = 21-29+6*60
+let D12 = 12-31+7*60
+let A13 = 84.3
+let B13 = 0.849
+let C13 = 52-27+3*60
+let D13 = 13-18+5*60
+let A14 = 84
+let B14 = 0.847
+let C14 = 22-59+11*60
+let D14 = 46-20+6*60
+let A15 = 83.9
+let B15 = 0.846
+let C15 = 11-29+10*60
+let A16 = 83.9
+let B16 = 0.844
+let C16 = 30-18+17*60
+let A17 = 83.4
+let B17 = 0.844
+let C17 = 2-37+4*60
+let A18 = 83.2
+let B18 = 0.836
+let C18 = 55-9+4*60
+let A19 = 83.1
+let B19 = 0.836
+let C19 = 24-2+19*60
+let A20 = 81.7
+let B20 = 0.829
+let C20 = 23-40+25*60
+let A22 = @avg(A11:A21)
+let B22 = @avg(B11:B21)
+let C22 = @avg(C11:C21)
+let D22 = @avg(D11:D21)
+let A23 = @stddev(A11:A21)
+let B23 = @avg(B12:B22)
+goto C22
+mark a "Sheet1" B22
