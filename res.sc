@@ -35,5 +35,13 @@ let B5 = 0.837
 let C5 = 60
 let D5 = 0.8195
 let E5 = 87
-goto E5
+let B6 = 0.8515
+let C6 = 78
+let D6 = 0.8365
+let E6 = 189
+let B7 = 0.828
+let C7 = 99
+let D7 = 0.8375
+let E7 = 110
+goto E7
 mark a "Sheet1" B1
