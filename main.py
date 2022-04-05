@@ -1,6 +1,7 @@
 _author_ = "davidbonet"
 """CW-DeepNNK, DeepNNK and Validation-based early stopping"""
 
+import math
 import os, json
 import numpy as np
 from absl import flags, app
@@ -37,7 +38,7 @@ flags.DEFINE_string("weight_initializer","he_uniform",
                     "Weight initialization method (glorot_uniform/glorot_normal/he_normal/he_uniform)")
 # Early stopping
 flags.DEFINE_string("stopping", "None", 
-                    "Early stopping method (cwdeepnnk/deepnnk/validation)")
+                    "Early stopping method (cwdeepnnk/deepnnk/validation/unsuprisk)")
 flags.DEFINE_integer("criterion_freq", 1, "Compute stopping criterion every X epochs")
 flags.DEFINE_integer("patience", 20, 
                      "Number of times to observe worsening generalization estimate before stopping")
@@ -103,6 +104,8 @@ def main(arg=None):
             stratify=y_train,
         )
         validation_dataset = BatchDataset(images=x_val, labels=y_val, labels_flag=True)
+    p0 = float(sum([x[0] for x in y_train]))/float(len(y_train))
+    print("detp0",p0)
     train_dataset = BatchDataset(images=x_train, labels=y_train, labels_flag=True)
     test_dataset = BatchDataset(images=x_test, labels=y_test, labels_flag=True)
 
@@ -265,6 +268,79 @@ def main(arg=None):
             start_idx = end_idx
         return np.mean(loss_val), np.mean(accuracy)
 
+    sq2 = math.sqrt(2.)
+    spi = math.sqrt(math.pi)
+    def calcnorm(x,m,v,s):
+        d=m-x
+        num = d*d
+        e = np.exp(-num/(2.*v))
+        f = e/(s*sq2*spi)
+        return f
+
+    def binrisk(mu0, mu1, var0, var1, prior0):
+            sigma0 = math.sqrt(var0)
+            sigma1 = math.sqrt(var1)
+            mor0 = calcnorm(-1.,mu0,var0,sigma0)
+            mor1 = calcnorm(1.,mu1,var1,sigma1)
+            prior1 = 1.-prior0
+
+            m = mu0+1.
+            r = prior0*m/2.
+            mm = -mu0-1.
+            nn = sq2*sigma0
+            mm = mm/nn
+            mm = math.erf(mm)
+            mm = 1.-mm
+            term1 = r*mm
+            r = term1
+
+            term2 = prior0*var0
+            term2 = term2*mor0
+            r = r+term2
+
+            m3 = 1.-mu1
+            term3 = prior1*m3/2.
+            nn3 = sq2*sigma1
+            mm3 = m3/nn3
+            mm3 = 1. + math.erf(mm3)
+            term3 = term3*mm3
+            r = r+term3
+
+            term4 = prior1*var1
+            term4 = term4*mor1
+            r = r+term4
+            return r
+
+    def get_unsuprisk(dataset):
+        dataset_size = dataset.get_dataset_size()
+        n_batches = dataset_size // batch_size
+        last_batch = dataset_size % batch_size
+        if n_batches == 0:
+            return 0, 0
+        loss_val = np.zeros(n_batches, dtype=float)
+        accuracy = np.zeros(n_batches, dtype=float)
+        start_idx = 0
+        scores = []
+        for itr in range(n_batches):
+            end_idx = start_idx + batch_size
+            feed_dict = {
+                input_data: dataset.images[start_idx:end_idx],
+                labels: dataset.labels[start_idx:end_idx],
+            }
+            detlogits = sess.run([logits], feed_dict=feed_dict)
+            scores += [x[0] for x in detlogits[0]]
+            start_idx = end_idx
+        sc = np.sort(scores)
+        n = int(p0 * len(sc))
+        llow = np.mean(sc[0:n])
+        lhig = np.mean(sc[n:])
+        sigbas = np.std(sc[0:n])
+        if sigbas < 0.01: sigbas += 0.01
+        sighaut = np.std(sc[n:])
+        if sighaut < 0.01: sighaut += 0.01
+        r = binrisk(llow,lhig,sigbas,sighaut,p0)
+        return r
+
     # Train
     if mode == "train":
         if os.path.exists(os.path.join(ckpts_folder, "checkpoint")):
@@ -291,6 +367,7 @@ def main(arg=None):
         else:
             patience = FLAGS.patience
             best_val = np.inf
+        best_risk = 99999.
 
         for epoch in range(epochs):
             print("\nTraining...")
@@ -419,6 +496,32 @@ def main(arg=None):
                     with open(file_csv, "a") as f_csv:
                         print(
                             f"{int(epoch+1)},{np.mean(train_loss)},{np.mean(train_acc)},None,None,{deepnnk_error},{patience},{best_val},None",
+                            file=f_csv,
+                        )
+
+                elif criterion == "unsuprisk":
+                    print("detunsuprisk")
+                    urisk = get_unsuprisk(train_dataset)
+                    if best_risk <= urisk:
+                        patience -= 1
+                        print(
+                            f"Unsup risk did not improve: {urisk:.3f} vs. {best_risk:.3f}. Patience {patience}/{FLAGS.patience}"
+                        )
+                        if patience <= 0:
+                            print("Breaking train loop: out of patience\n")
+                            break
+                    else:
+                        # Reset patience
+                        print(
+                            f"Unsup risk improved {urisk:.3f} -> {best_risk:.3f}"
+                        )
+                        best_risk = urisk
+                        patience = FLAGS.patience
+                        name_ckpt = f"bestval_{epoch+1}"
+                        saver.save(sess, ckpts_folder + f"/{name_ckpt}.ckpt", epoch + 1)
+                    with open(file_csv, "a") as f_csv:
+                        print(
+                            f"{int(epoch+1)},{np.mean(train_loss)},{np.mean(train_acc)},{urisk},{patience},{best_risk},None",
                             file=f_csv,
                         )
 
